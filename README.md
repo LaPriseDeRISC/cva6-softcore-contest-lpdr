@@ -6,7 +6,7 @@ https://cva6.readthedocs.io/en/latest/
 
 Checkout the repository and initialize all submodules:
 ```
-$ git clone --recursive https://github.com/ThalesGroup/cva6-softcore-contest.git
+$ git clone --recursive https://github.com/LaPriseDeRISC/cva6-softcore-contest-lpdr.git
 ```
 
 Do not forget to check all the details of the contest in [Annonce RISC-V contest 2022-2023 v1.pdf](./Annonce%20RISC-V%20contest%202022-2023%20v1.pdf).
