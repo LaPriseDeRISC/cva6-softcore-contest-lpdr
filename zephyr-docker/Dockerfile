@@ -105,6 +105,15 @@ RUN if [ "${HOSTTYPE}" = "x86_64" ]; then \
 		libsdl2-dev:i386 \
 	; fi
 
+# Install GitHub CLI
+RUN	type -p curl >/dev/null ; \
+	sudo apt-get update && sudo apt-get install curl -y && \
+	curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+	&& sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+	&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+	&& sudo apt-get update \
+	&& sudo apt-get install gh -y
+
 # Initialise system locale
 RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8

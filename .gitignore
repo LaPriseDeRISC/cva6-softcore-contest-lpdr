@@ -32,3 +32,10 @@ work-dpi/
 tb/riscv-isa-sim/
 work-*/*
 install/
+zephyr-docker/workspace/*
+# !zephyr-docker/perf_baseline/
+# !zephyr-docker/ripe/
+!zephyr-docker/workspace/perf_baseline/*
+!zephyr-docker/workspace/ripe/*
+!zephyr-docker/workspace/*.bash
+zephyr-docker/container_id
