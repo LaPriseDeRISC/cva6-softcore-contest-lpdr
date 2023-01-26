@@ -79,7 +79,16 @@ Now, the hardware is ready and the hyperterminal is connected to the UART output
 
 ### Installation
 
-#### Building Developer Docker Image
+#### Building Developer Docker Image automatically:
+by La Prise de RISC
+
+```
+cd zephyr-docker
+make fattach
+```	
+You can do `make help` to see all the available commands.
+
+#### Building Developer Docker Image manually
 
 The developer docker image can be built using the following command from the zephyr-docker folder:
 
@@ -96,9 +105,20 @@ docker run -ti --privileged -v `realpath workspace`:/workdir zephyr-build:v1
 
 All the following commands should be run from the docker.
 
-### Usage
 
-#### Initialization of Zephyr
+### Usage
+#### Initialization of Zephyr automatically
+by La Prise de RISC
+
+```
+cd /workdir
+bash init.bash
+```
+
+It will invite you to enter your GitHub username and password to clone the La Prise de RISC modified Thales Zephyr.
+You can do `bash init.bash --clean` to clear the workspace before cloning.
+
+#### Initialization of Zephyr manually
 
 To initialize Zephyr environment with the Thales modified Zephyr:
 
