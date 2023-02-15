@@ -170,6 +170,8 @@ RUN useradd -u $UID -m -g user -G plugdev user \
 # Run the Zephyr SDK setup script as 'user' in order to ensure that the
 # `Zephyr-sdk` CMake package is located in the package registry under the
 # user's home directory.
+# RUN	echo PATH\=\$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/bin >> /root/.bashrc
+
 USER user
 
 RUN sudo -E -- bash -c ' \
@@ -177,7 +179,12 @@ RUN sudo -E -- bash -c ' \
 	chown -R user:user /home/user/.cmake \
 	'
 
+
+
+
 # Set the locale
 ENV ZEPHYR_TOOLCHAIN_VARIANT=zephyr
 ENV PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 ENV OVMF_FD_PATH=/usr/share/ovmf/OVMF.fd
+ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/riscv64-zephyr-elf/bin"
+ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/x86_64-pokysdk-linux/usr/bin"
