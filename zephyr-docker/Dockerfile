@@ -178,7 +178,7 @@ RUN sudo -E -- bash -c ' \
 	/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/setup.sh -c && \
 	chown -R user:user /home/user/.cmake \
 	'
-
+# RUN sudo echo 
 
 
 
@@ -187,4 +187,4 @@ ENV ZEPHYR_TOOLCHAIN_VARIANT=zephyr
 ENV PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 ENV OVMF_FD_PATH=/usr/share/ovmf/OVMF.fd
 ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/riscv64-zephyr-elf/bin"
-ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/x86_64-pokysdk-linux/usr/bin"
+ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/sysroots/x86_64-pokysdk-linux/usr/bin"
