@@ -59,7 +59,8 @@ ifeq ($(container_id),)
 else
 	@echo "$(GREEN)Attaching to $(container_id) $(NC)"
 endif
-	-docker attach --detach-keys=$(detach_keys) --sig-proxy=false $(container_id) 
+#	-docker attach --detach-keys=$(detach_keys) --sig-proxy=false $(container_id) 
+	-docker exec -it $(container_id) /bin/bash
 
 fattach:
 # container_id=$(docker ps -aqf "name=$(tag)")
@@ -77,4 +78,3 @@ endif
 stop:
 	@echo "Stopping $(container_id)"
 	docker rm -f $(shell docker ps -aqf "name=$(name)")
-
