@@ -167,6 +167,9 @@ RUN useradd -u $UID -m -g user -G plugdev user \
 	&& echo 'user ALL = NOPASSWD: ALL' > /etc/sudoers.d/user \
 	&& chmod 0440 /etc/sudoers.d/user
 
+# add zephyr path to root/.bashrc
+RUN echo PATH\=\$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/riscv64-zephyr-elf/bin:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/sysroots/x86_64-pokysdk-linux/usr/bin >> /root/.bashrc
+
 # Run the Zephyr SDK setup script as 'user' in order to ensure that the
 # `Zephyr-sdk` CMake package is located in the package registry under the
 # user's home directory.
@@ -188,3 +191,4 @@ ENV PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 ENV OVMF_FD_PATH=/usr/share/ovmf/OVMF.fd
 ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/riscv64-zephyr-elf/bin"
 ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/sysroots/x86_64-pokysdk-linux/usr/bin"
+# ENV PATH="$PATH:/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}/riscv32-zephyr-elf/bin"

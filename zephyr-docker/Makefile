@@ -60,7 +60,7 @@ else
 	@echo "$(GREEN)Attaching to $(container_id) $(NC)"
 endif
 #	-docker attach --detach-keys=$(detach_keys) --sig-proxy=false $(container_id) 
-	-docker exec -it $(container_id) /bin/bash
+	-docker exec -it $(container_id) /bin/bash -c "cd /workdir && /bin/bash" 
 
 fattach:
 # container_id=$(docker ps -aqf "name=$(tag)")
