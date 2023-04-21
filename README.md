@@ -110,14 +110,29 @@ All the following commands should be run from the docker.
 #### Initialization of Zephyr automatically
 by La Prise de RISC
 
-```
+```bash
 cd /workdir
-bash init.bash
+bash lpdr_tools.bash -z
 ```
 
 It will invite you to enter your GitHub username and password to clone the La Prise de RISC modified Thales Zephyr.
-You can do `bash init.bash --clean` to clear the workspace before cloning.
+You can do `./lpdr_tools.bash --clean` to clear the workspace before cloning.
 
+You can also init the picolibc-lpdr sources as follows:
+`./lpdr_tools.bash -p`
+
+An overview of the available commands is available with `./lpdr_tools.bash --help`:
+```bash
+Usage: init.bash [OPTION]
+Options:
+   --help -h    Display this help and exit
+   --clean      Remove the zephyr directory
+   --cheat -cs  Display the cheat sheet
+   --zephyr-setup -z    Setup the zephyr directory
+   --picolibc-setup -p  Setup the picolibc directory
+   --picolibc-all -pa   Build and patch picolibc
+```
+dqsdqsd
 #### Initialization of Zephyr manually
 
 To initialize Zephyr environment with the Thales modified Zephyr:

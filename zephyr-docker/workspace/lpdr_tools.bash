@@ -31,6 +31,7 @@ fi
 # fi
 
 # if 
+
 if [ "$1" = "--cs" -o "$1" = "--cheat" -o "$1" = "--cheat-sheet" ]; then
     echo -e "Cheat sheet :"
     echo -e "west build -p -b qemu_riscv32 /workdir/zephyr/samples/hello_world" 
