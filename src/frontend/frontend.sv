@@ -94,7 +94,7 @@ module frontend import ariane_pkg::*; #(
 
     // branch-predict update
     logic            is_mispredict;
-    logic            ras_push, ras_pop;
+    logic            ras_push, ras_pop, ras_branch, ras_empty, ras_close_branch;
     logic [riscv::VLEN-1:0]     ras_update;
 
     // Instruction FIFO
@@ -164,6 +164,7 @@ module frontend import ariane_pkg::*; #(
 
       ras_push = 1'b0;
       ras_pop = 1'b0;
+      ras_branch = 1'b0;
       ras_update = '0;
 
       // lower most prediction gets precedence
@@ -174,6 +175,7 @@ module frontend import ariane_pkg::*; #(
           4'b0001: begin
             ras_pop = 1'b0;
             ras_push = 1'b0;
+            ras_branch = instr_queue_consumed[i];
             if (btb_prediction_shifted[i].valid) begin
               predict_address = btb_prediction_shifted[i].target_address;
               cf_type[i] = ariane_pkg::JumpR;
@@ -183,6 +185,7 @@ module frontend import ariane_pkg::*; #(
           4'b0010: begin
             ras_pop = 1'b0;
             ras_push = 1'b0;
+            ras_branch = 1'b0;
             taken_rvi_cf[i] = rvi_jump[i];
             taken_rvc_cf[i] = rvc_jump[i];
             cf_type[i] = ariane_pkg::Jump;
@@ -190,7 +193,8 @@ module frontend import ariane_pkg::*; #(
           // return
           4'b0100: begin
             // make sure to only alter the RAS if we actually consumed the instruction
-            ras_pop = ras_predict.valid & instr_queue_consumed[i];
+            ras_pop = instr_queue_consumed[i];
+            ras_branch = instr_queue_consumed[i];
             ras_push = 1'b0;
             predict_address = ras_predict.ra;
             cf_type[i] = ariane_pkg::Return;
@@ -199,6 +203,7 @@ module frontend import ariane_pkg::*; #(
           4'b1000: begin
             ras_pop = 1'b0;
             ras_push = 1'b0;
+            ras_branch = instr_queue_consumed[i];
             // if we have a valid dynamic prediction use it
             if (bht_prediction_shifted[i].valid) begin
               taken_rvi_cf[i] = rvi_branch[i] & bht_prediction_shifted[i].taken;
@@ -354,16 +359,19 @@ module frontend import ariane_pkg::*; #(
       end
     end
 
-    ras #(
-      .DEPTH  ( ArianeCfg.RASDepth  )
-    ) i_ras (
-      .clk_i,
-      .rst_ni,
-      .flush_i( flush_bp_i  ),
-      .push_i ( ras_push    ),
-      .pop_i  ( ras_pop     ),
-      .data_i ( ras_update  ),
-      .data_o ( ras_predict )
+    assign ras_close_branch = resolved_branch_i.valid && (resolved_branch_i.cf_type != ariane_pkg::Jump);
+    assign ras_predict.valid = !ras_empty;
+    ras #() i_ras (
+      .clk(clk_i),
+      .rst_ni(rst_ni),
+      .pop(ras_pop),
+      .push(ras_push),
+      .branch(ras_branch),
+      .close_valid(ras_close_branch && !resolved_branch_i.is_mispredict),
+      .close_invalid(ras_close_branch && resolved_branch_i.is_mispredict),
+      .din(ras_update),
+      .dout(ras_predict.ra),
+      .empty(ras_empty)
     );
 
     btb #(
