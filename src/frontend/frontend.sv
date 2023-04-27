@@ -160,7 +160,7 @@ module frontend import ariane_pkg::*; #(
       taken_rvc_cf = '0;
       predict_address = '0;
 
-      for (int i = 0; i < INSTR_PER_FETCH; i++)  cf_type[i] = ariane_pkg::NoCF;
+      for (int i = 0; i < INSTR_PER_FETCH; i++)  cf_type[i] = cf_t'(0);
 
       ras_push = 1'b0;
       ras_pop = 1'b0;
@@ -178,7 +178,7 @@ module frontend import ariane_pkg::*; #(
             ras_branch = instr_queue_consumed[i];
             if (btb_prediction_shifted[i].valid) begin
               predict_address = btb_prediction_shifted[i].target_address;
-              cf_type[i] = ariane_pkg::JumpR;
+              cf_type[i].taken = 1'b1;
             end
           end
           // its an unconditional jump to an immediate
@@ -188,7 +188,7 @@ module frontend import ariane_pkg::*; #(
             ras_branch = 1'b0;
             taken_rvi_cf[i] = rvi_jump[i];
             taken_rvc_cf[i] = rvc_jump[i];
-            cf_type[i] = ariane_pkg::Jump;
+            cf_type[i].taken = 1'b1;
           end
           // return
           4'b0100: begin
@@ -197,7 +197,8 @@ module frontend import ariane_pkg::*; #(
             ras_branch = instr_queue_consumed[i];
             ras_push = 1'b0;
             predict_address = ras_predict.ra;
-            cf_type[i] = ariane_pkg::Return;
+            cf_type[i].is_return = 1'b1;
+            cf_type[i].taken = 1'b1;
           end
           // branch prediction
           4'b1000: begin
@@ -214,7 +215,7 @@ module frontend import ariane_pkg::*; #(
               taken_rvi_cf[i] = rvi_branch[i] & rvi_imm[i][riscv::VLEN-1];
               taken_rvc_cf[i] = rvc_branch[i] & rvc_imm[i][riscv::VLEN-1];
             end
-            if (taken_rvi_cf[i] || taken_rvc_cf[i]) cf_type[i] = ariane_pkg::Branch;
+            if (taken_rvi_cf[i] || taken_rvc_cf[i]) cf_type[i].taken = 1'b1;
           end
           default:;
             // default: $error("Decoded more than one control flow");
@@ -222,9 +223,11 @@ module frontend import ariane_pkg::*; #(
           // if this instruction, in addition, is a call, save the resulting address
           // but only if we actually consumed the address
           if (is_call[i]) begin
+            cf_type[i].is_call = 1'b1;
             ras_push = instr_queue_consumed[i];
             ras_update = addr[i] + (rvc_call[i] ? 2 : 4);
-          end
+          end else
+            ras_push = 1'b0;
           // calculate the jump target address
           if (taken_rvc_cf[i] || taken_rvi_cf[i]) begin
             predict_address = addr[i] + (taken_rvc_cf[i] ? rvc_imm[i] : rvi_imm[i]);
@@ -237,7 +240,7 @@ module frontend import ariane_pkg::*; #(
       // BP cannot be valid if we have a return instruction and the RAS is not giving a valid address
       // Check that we encountered a control flow and that for a return the RAS 
       // contains a valid prediction.
-      for (int i = 0; i < INSTR_PER_FETCH; i++) bp_valid |= ((cf_type[i] != NoCF & cf_type[i] != Return) | ((cf_type[i] == Return) & ras_predict.valid));
+      for (int i = 0; i < INSTR_PER_FETCH; i++) bp_valid |= ((cf_type[i].taken & !cf_type[i].is_return) | ((cf_type[i].is_return) & ras_predict.valid));
     end
     assign is_mispredict = resolved_branch_i.valid & resolved_branch_i.is_mispredict;
 
@@ -257,14 +260,11 @@ module frontend import ariane_pkg::*; #(
     bht_update_t bht_update;
     btb_update_t btb_update;
 
-    assign bht_update.valid = resolved_branch_i.valid
-                                & (resolved_branch_i.cf_type == ariane_pkg::Branch);
+    assign bht_update.valid = resolved_branch_i.valid & resolved_branch_i.conditional;
     assign bht_update.pc    = resolved_branch_i.pc;
-    assign bht_update.taken = resolved_branch_i.is_taken;
+    assign bht_update.taken = resolved_branch_i.cf_type.taken;
     // only update mispredicted branches e.g. no returns from the RAS
-    assign btb_update.valid = resolved_branch_i.valid
-                                & resolved_branch_i.is_mispredict
-                                & (resolved_branch_i.cf_type == ariane_pkg::JumpR);
+    assign btb_update.valid = is_mispredict & resolved_branch_i.to_reg;
     assign btb_update.pc    = resolved_branch_i.pc;
     assign btb_update.target_address = resolved_branch_i.target_address;
 

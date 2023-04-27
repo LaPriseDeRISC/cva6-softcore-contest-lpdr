@@ -120,7 +120,7 @@ module instr_queue (
   assign ready_o = ~(|instr_queue_full) & ~full_address;
 
   for (genvar i = 0; i < ariane_pkg::INSTR_PER_FETCH; i++) begin : gen_unpack_taken
-    assign taken[i] = cf_type_i[i] != ariane_pkg::NoCF;
+    assign taken[i] = cf_type_i[i].taken;
   end
   // calculate a branch mask, e.g.: get the first taken branch
   lzc #(
@@ -222,7 +222,7 @@ module instr_queue (
 
     fetch_entry_o.ex.tval = '0;
     fetch_entry_o.branch_predict.predict_address = address_out;
-    fetch_entry_o.branch_predict.cf = ariane_pkg::NoCF;
+    fetch_entry_o.branch_predict.cf.taken = 1'b0;
     // output mux select
     for (int unsigned i = 0; i < ariane_pkg::INSTR_PER_FETCH; i++) begin
       if (idx_ds_q[i]) begin
@@ -246,7 +246,7 @@ module instr_queue (
 
   // TODO(zarubaf): This needs to change for dual-issue
   // if the handshaking is successful and we had a prediction pop one address entry
-  assign pop_address = ((fetch_entry_o.branch_predict.cf != ariane_pkg::NoCF) & |pop_instr);
+  assign pop_address = (fetch_entry_o.branch_predict.cf.taken & |pop_instr);
 
   // ----------------------
   // Calculate (Next) PC
@@ -298,7 +298,7 @@ module instr_queue (
     push_address = 1'b0;
     // check if we are pushing a ctrl flow change, if so save the address
     for (int i = 0; i < ariane_pkg::INSTR_PER_FETCH; i++) begin
-      push_address |= push_instr[i] & (instr_data_in[i].cf != ariane_pkg::NoCF);
+      push_address |= push_instr[i] & instr_data_in[i].cf.taken;
     end
   end
 

@@ -43,10 +43,12 @@ module branch_unit (
         target_address                   = {riscv::VLEN{1'b0}};
         resolve_branch_o                 = 1'b0;
         resolved_branch_o.target_address = {riscv::VLEN{1'b0}};
-        resolved_branch_o.is_taken       = 1'b0;
         resolved_branch_o.valid          = branch_valid_i;
         resolved_branch_o.is_mispredict  = 1'b0;
+        resolved_branch_o.conditional    = 1'b0;
+        resolved_branch_o.to_reg         = 1'b0;
         resolved_branch_o.cf_type        = branch_predict_i.cf;
+        resolved_branch_o.cf_type.taken  = 1'b0;
         // calculate next PC, depending on whether the instruction is compressed or not this may be different
         // TODO(zarubaf): We already calculate this a couple of times, maybe re-use?
         next_pc                          = pc_i + ((is_compressed_instr_i) ? {{riscv::VLEN-2{1'b0}}, 2'h2} : {{riscv::VLEN-3{1'b0}}, 3'h4});
@@ -63,20 +65,23 @@ module branch_unit (
         if (branch_valid_i) begin
             // write target address which goes to PC Gen
             resolved_branch_o.target_address = (branch_comp_res_i) ? target_address : next_pc;
-            resolved_branch_o.is_taken = branch_comp_res_i;
+            resolved_branch_o.cf_type.taken = branch_comp_res_i;
             // check the outcome of the branch speculation
-            if (ariane_pkg::op_is_branch(fu_data_i.operator) && branch_comp_res_i != (branch_predict_i.cf == ariane_pkg::Branch)) begin
+            if (ariane_pkg::op_is_branch(fu_data_i.operator) && (branch_comp_res_i != branch_predict_i.cf.taken)) begin
                 // we mis-predicted the outcome
                 // if the outcome doesn't match we've got a mis-predict
                 resolved_branch_o.is_mispredict  = 1'b1;
-                resolved_branch_o.cf_type = ariane_pkg::Branch;
+                resolved_branch_o.conditional = 1'b1;
             end
             if (fu_data_i.operator == ariane_pkg::JALR
                 // check if the address of the jump register is correct and that we actually predicted
-                && (branch_predict_i.cf == ariane_pkg::NoCF || target_address != branch_predict_i.predict_address)) begin
+                && ((!branch_predict_i.cf.taken) || target_address != branch_predict_i.predict_address)) begin
                 resolved_branch_o.is_mispredict  = 1'b1;
                 // update BTB only if this wasn't a return
-                if (branch_predict_i.cf != ariane_pkg::Return) resolved_branch_o.cf_type = ariane_pkg::JumpR;
+                if (!branch_predict_i.cf.is_return) begin
+                    resolved_branch_o.cf_type.taken = 1'b1;
+                    resolved_branch_o.to_reg = 1'b1;
+                end
             end
             // to resolve the branch in ID
             resolve_branch_o = 1'b1;
