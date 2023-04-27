@@ -214,12 +214,15 @@ module commit_stage import ariane_pkg::*; #(
             // -----------------
             // check if the second instruction can be committed as well and the first wasn't a CSR instruction
             // also if we are in single step mode don't retire the second instruction
+            // we dont want to commit calls or returns in second position : the RAS can only handle 1 per cycle
             if (commit_ack_o[0] && commit_instr_i[1].valid
                                 && !halt_i
                                 && !(commit_instr_i[0].fu inside {CSR})
                                 && !flush_dcache_i
                                 && !instr_0_is_amo
-                                && !single_step_i) begin
+                                && !single_step_i
+                                && !commit_instr_i[1].bp.cf.is_return
+                                && !commit_instr_i[1].bp.cf.is_call ) begin
                 // only if the first instruction didn't throw an exception and this instruction won't throw an exception
                 // and the functional unit is of type ALU, LOAD, CTRL_FLOW, MULT, FPU or FPU_VEC
                 if (!exception_o.valid && !commit_instr_i[1].ex.valid
