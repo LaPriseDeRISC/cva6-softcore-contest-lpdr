@@ -32,8 +32,7 @@ module frontend import ariane_pkg::*; #(
   // from commit, when flushing the whole pipeline
   input  logic               set_pc_commit_i,    // Take the PC from commit stage
   input  logic [riscv::VLEN-1:0] pc_commit_i,        // PC of instruction in commit stage
-  input  cf_t                commit_instr_bp_i,  // currently commited instruction, it can be a call / return
-  input  logic               commit_valid_i,     // valid signal from commit
+  input  logic               commit_ras_i,     // valid signal from commit
   // CSR input
   input  logic [riscv::VLEN-1:0] epc_i,              // exception PC which we need to return to
   input  logic               eret_i,             // return from exception
@@ -353,17 +352,21 @@ module frontend import ariane_pkg::*; #(
       end
     end
 
+    assert property (@(posedge clk_i) !(is_mispredict && resolved_branch_i.cf_type.is_return));
     assign ras_predict.valid = !ras_empty;
-    ras #() i_ras (
+    wire ras_in_ex = resolved_branch_i.valid && (resolved_branch_i.cf_type.is_return || resolved_branch_i.cf_type.is_call);
+    ras #(
+        .STAGES(2),
+        .WIDTH(32),
+        .DEPTH(2048),
+        .MAX_BRANCHES(16)
+    ) i_ras (
       .clk(clk_i),
       .rst_ni(rst_ni),
-      .pop(ras_pop),
-      .push(ras_push),
-      .isolate_pop(is_mispredict && resolved_branch_i.cf_type.is_return),
-      .isolate_push(is_mispredict && resolved_branch_i.cf_type.is_call),
-      .commit_pop(commit_instr_bp_i.is_return && commit_valid_i),
-      .commit_push(commit_instr_bp_i.is_call && commit_valid_i),
-      .flush(flush_ras_i),
+      .pop(ras_pop && !flush_i),
+      .push(ras_push && !flush_i),
+      .commit({commit_ras_i, ras_in_ex}),
+      .flush({flush_ras_i, flush_i}),
       .din(ras_update),
       .dout(ras_predict.ra),
       .empty(ras_empty)

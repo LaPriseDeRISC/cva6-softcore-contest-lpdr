@@ -207,7 +207,6 @@ module ariane import ariane_pkg::*; #(
   logic                     flush_csr_ctrl;
   logic                     flush_unissued_instr_ctrl_id;
   logic                     flush_ctrl_if;
-  logic                     flush_ras_if;
   logic                     flush_ctrl_id;
   logic                     flush_ctrl_ex;
   logic                     flush_ctrl_bp;
@@ -246,7 +245,7 @@ module ariane import ariane_pkg::*; #(
     .ArianeCfg ( ArianeCfg )
   ) i_frontend (
     .flush_i             ( flush_ctrl_if                 ), // not entirely correct
-    .flush_ras_i         ( flush_ras_if                  ),
+    .flush_ras_i         ( flush_ctrl_id || flush_ctrl_ex),
     .flush_bp_i          ( 1'b0                          ),
     .debug_mode_i        ( debug_mode                    ),
     .boot_addr_i         ( boot_addr_i[riscv::XLEN-1:0]  ),
@@ -254,8 +253,12 @@ module ariane import ariane_pkg::*; #(
     .icache_dreq_o       ( icache_dreq_if_cache          ),
     .resolved_branch_i   ( resolved_branch               ),
     .pc_commit_i         ( pc_commit                     ),
-    .commit_instr_bp_i   ( commit_instr_id_commit[0].bp.cf),
-    .commit_valid_i      ( commit_ack[0]                 ),
+    .commit_ras_i        ( (commit_ack[0] &&
+                          (commit_instr_id_commit[0].bp.cf.is_return ||
+                           commit_instr_id_commit[0].bp.cf.is_call)) ||
+                           (commit_ack[1] &&
+                          (commit_instr_id_commit[1].bp.cf.is_return ||
+                           commit_instr_id_commit[1].bp.cf.is_call))),
     .set_pc_commit_i     ( set_pc_ctrl_pcgen             ),
     .set_debug_pc_i      ( set_debug_pc                  ),
     .epc_i               ( epc_commit_pcgen              ),
@@ -586,7 +589,6 @@ module ariane import ariane_pkg::*; #(
     .set_pc_commit_o        ( set_pc_ctrl_pcgen             ),
     .flush_unissued_instr_o ( flush_unissued_instr_ctrl_id  ),
     .flush_if_o             ( flush_ctrl_if                 ),
-    .flush_ras_o            ( flush_ras_if                  ),
     .flush_id_o             ( flush_ctrl_id                 ),
     .flush_ex_o             ( flush_ctrl_ex                 ),
     .flush_bp_o             ( flush_ctrl_bp                 ),

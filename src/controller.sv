@@ -18,7 +18,6 @@ module controller import ariane_pkg::*; (
     input  logic            rst_ni,
     output logic            set_pc_commit_o,        // Set PC om PC Gen
     output logic            flush_if_o,             // Flush the IF stage
-    output logic            flush_ras_o,            // Flush the RAS in IF
     output logic            flush_unissued_instr_o, // Flush un-issued instructions of the scoreboard
     output logic            flush_id_o,             // Flush ID stage
     output logic            flush_ex_o,             // Flush EX stage
@@ -52,7 +51,6 @@ module controller import ariane_pkg::*; (
         fence_active_d         = fence_active_q;
         set_pc_commit_o        = 1'b0;
         flush_if_o             = 1'b0;
-        flush_ras_o            = 1'b0;
         flush_unissued_instr_o = 1'b0;
         flush_id_o             = 1'b0;
         flush_ex_o             = 1'b0;
@@ -69,8 +67,6 @@ module controller import ariane_pkg::*; (
             flush_unissued_instr_o = 1'b1;
             // and if stage
             flush_if_o             = 1'b1;
-            // and the RAS if the mispredict was not a call / push cause the ras is never wrong >:(
-            if (!(resolved_branch_i.cf_type.is_call || resolved_branch_i.cf_type.is_return)) flush_ras_o = 1'b1;
         end
 
         // ---------------------------------
@@ -80,7 +76,6 @@ module controller import ariane_pkg::*; (
             // this can be seen as a CSR instruction with side-effect
             set_pc_commit_o        = 1'b1;
             flush_if_o             = 1'b1;
-            flush_ras_o            = 1'b1;
             flush_unissued_instr_o = 1'b1;
             flush_id_o             = 1'b1;
             flush_ex_o             = 1'b1;
@@ -98,7 +93,6 @@ module controller import ariane_pkg::*; (
         if (fence_i_i) begin
             set_pc_commit_o        = 1'b1;
             flush_if_o             = 1'b1;
-            flush_ras_o            = 1'b1;
             flush_unissued_instr_o = 1'b1;
             flush_id_o             = 1'b1;
             flush_ex_o             = 1'b1;
@@ -128,7 +122,6 @@ module controller import ariane_pkg::*; (
         if (sfence_vma_i) begin
             set_pc_commit_o        = 1'b1;
             flush_if_o             = 1'b1;
-            flush_ras_o            = 1'b1;
             flush_unissued_instr_o = 1'b1;
             flush_id_o             = 1'b1;
             flush_ex_o             = 1'b1;
@@ -140,7 +133,6 @@ module controller import ariane_pkg::*; (
         if (flush_csr_i || flush_commit_i) begin
             set_pc_commit_o        = 1'b1;
             flush_if_o             = 1'b1;
-            flush_ras_o            = 1'b1;
             flush_unissued_instr_o = 1'b1;
             flush_id_o             = 1'b1;
             flush_ex_o             = 1'b1;
@@ -155,7 +147,6 @@ module controller import ariane_pkg::*; (
             // for the PC Gen stage but instead tells it to take the PC we gave it
             set_pc_commit_o        = 1'b0;
             flush_if_o             = 1'b1;
-            flush_ras_o            = 1'b1;
             flush_unissued_instr_o = 1'b1;
             flush_id_o             = 1'b1;
             flush_ex_o             = 1'b1;
