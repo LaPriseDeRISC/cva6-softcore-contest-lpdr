@@ -192,8 +192,10 @@ module frontend import ariane_pkg::*; #(
             // make sure to only alter the RAS if we actually consumed the instruction
             ras_pop = instr_queue_consumed[i];
             predict_address = ras_predict.ra;
-            cf_type[i].is_return = 1'b1;
-            cf_type[i].taken = 1'b1;
+            if(ras_predict.valid) begin
+                cf_type[i].is_return = 1'b1;
+                cf_type[i].taken = 1'b1;
+            end
           end
           // branch prediction
           4'b1000: begin
@@ -233,7 +235,7 @@ module frontend import ariane_pkg::*; #(
       // BP cannot be valid if we have a return instruction and the RAS is not giving a valid address
       // Check that we encountered a control flow and that for a return the RAS 
       // contains a valid prediction.
-      for (int i = 0; i < INSTR_PER_FETCH; i++) bp_valid |= ((cf_type[i].taken & !cf_type[i].is_return) | ((cf_type[i].is_return) & ras_predict.valid));
+      for (int i = 0; i < INSTR_PER_FETCH; i++) bp_valid |= (cf_type[i].taken && ((!cf_type[i].is_return) || (cf_type[i].is_return & ras_predict.valid)));
     end
     assign is_mispredict = resolved_branch_i.valid & resolved_branch_i.is_mispredict;
 
