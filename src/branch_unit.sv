@@ -67,11 +67,11 @@ module branch_unit (
             resolved_branch_o.target_address = (branch_comp_res_i) ? target_address : next_pc;
             resolved_branch_o.cf_type.taken = branch_comp_res_i;
             // check the outcome of the branch speculation
+            resolved_branch_o.conditional = ariane_pkg::op_is_branch(fu_data_i.operator);
             if (ariane_pkg::op_is_branch(fu_data_i.operator) && branch_comp_res_i != branch_predict_i.cf.taken) begin
                 // we mis-predicted the outcome
                 // if the outcome doesn't match we've got a mis-predict
                 resolved_branch_o.is_mispredict  = 1'b1;
-                resolved_branch_o.conditional = 1'b1;
             end
             if (fu_data_i.operator == ariane_pkg::JALR
                 // check if the address of the jump register is correct and that we actually predicted
