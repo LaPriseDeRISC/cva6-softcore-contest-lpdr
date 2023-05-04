@@ -28,7 +28,7 @@
 # 2020-10-06  0.1      S.Jacq       Created
 # =========================================================================== #
 set project cva6_ooc
-
+set_param board.repoPaths [list $env(HOME)/.Xilinx/Vivado/2022.2/xhub/board_store/xilinx_board_store /tools/Xilinx/Vivado/2022.2/data/xhub/boards]
 create_project $project . -force -part $::env(XILINX_PART)
 set_property board_part $::env(XILINX_BOARD) [current_project]
 
