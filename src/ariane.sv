@@ -185,6 +185,7 @@ module ariane import ariane_pkg::*; #(
   logic                     csr_write_fflags_commit_cs;
   logic                     icache_en_csr;
   logic                     debug_mode;
+  logic                     ras_enable;
   logic                     single_step_csr_commit;
   riscv::pmpcfg_t [15:0]    pmpcfg;
   logic [15:0][53:0]        pmpaddr;
@@ -376,6 +377,7 @@ module ariane import ariane_pkg::*; #(
     .fu_data_i              ( fu_data_id_ex               ),
     .pc_i                   ( pc_id_ex                    ),
     .is_compressed_instr_i  ( is_compressed_instr_id_ex   ),
+    .ras_enable_i           ( ras_enable                  ),
     // fixed latency units
     .flu_result_o           ( flu_result_ex_id            ),
     .flu_trans_id_o         ( flu_trans_id_ex_id          ),
@@ -542,6 +544,7 @@ module ariane import ariane_pkg::*; #(
     .tsr_o                  ( tsr_csr_id                    ),
     .debug_mode_o           ( debug_mode                    ),
     .single_step_o          ( single_step_csr_commit        ),
+    .ras_enable_o           ( ras_enable                    ),
     .dcache_en_o            ( dcache_en_csr_nbdcache        ),
     .icache_en_o            ( icache_en_csr                 ),
     .perf_addr_o            ( addr_csr_perf                 ),

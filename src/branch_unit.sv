@@ -16,6 +16,7 @@ module branch_unit (
     input  logic                      clk_i,
     input  logic                      rst_ni,
     input  logic                      debug_mode_i,
+    input  logic                      ras_enable_i,
     input  ariane_pkg::fu_data_t      fu_data_i,
     input  logic [riscv::VLEN-1:0]    pc_i,                   // PC of instruction
     input  logic                      is_compressed_instr_i,
@@ -56,6 +57,7 @@ module branch_unit (
         target_address                   = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[riscv::VLEN-1:0]));
         // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
         if (fu_data_i.operator == ariane_pkg::JALR) target_address[0] = 1'b0;
+        if (ras_enable_i && branch_predict_i.cf.taken && branch_predict_i.cf.is_return) target_address = branch_predict_i.predict_address;
         // we need to put the branch target address into rd, this is the result of this unit
         branch_result_o = next_pc;
         resolved_branch_o.pc = pc_i;
