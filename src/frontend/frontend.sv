@@ -354,9 +354,10 @@ module frontend import ariane_pkg::*; #(
 
     assert property (@(posedge clk_i) !(is_mispredict && resolved_branch_i.cf_type.is_return));
     wire ras_in_ex = resolved_branch_i.valid && (resolved_branch_i.cf_type.is_return || resolved_branch_i.cf_type.is_call);
+    assign ras_predict.ra[0] = 1'b0; // JALR is always 2 bytes aligned according to the spec
     ras #(
         .STAGES(2),
-        .WIDTH(32),
+        .WIDTH(riscv::XLEN-1),
         .DEPTH(1024),
         .MAX_BRANCHES(16)
     ) i_ras (
@@ -367,8 +368,8 @@ module frontend import ariane_pkg::*; #(
       .push(ras_push && !flush_i),
       .commit({commit_ras_i, ras_in_ex}),
       .flush({flush_ras_i, flush_i}),
-      .din(ras_update),
-      .dout(ras_predict.ra),
+      .din(ras_update[riscv::XLEN-1:1]),
+      .dout(ras_predict.ra[riscv::XLEN-1:1]),
       .valid(ras_predict.valid)
     );
 
