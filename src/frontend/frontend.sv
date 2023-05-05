@@ -359,7 +359,7 @@ module frontend import ariane_pkg::*; #(
         .STAGES(2),
         .WIDTH(riscv::XLEN-1),
         .DEPTH(1024),
-        .MAX_BRANCHES(16)
+        .SCRATCHPAD_DEPTH(16)
     ) i_ras (
       .clk(clk_i),
       .rst_ni(rst_ni),
