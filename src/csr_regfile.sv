@@ -76,6 +76,7 @@ module csr_regfile import ariane_pkg::*; #(
     output logic                  debug_mode_o,               // we are in debug mode -> that will change some decoding
     output logic                  single_step_o,              // we are in single-step mode
     output logic                  ras_enable_o,               // enable RAS protection
+    output logic                  ras_flush_o,
     // Caches
     output logic                  icache_en_o,                // L1 ICache Enable
     output logic                  dcache_en_o,                // L1 DCache Enable
@@ -306,6 +307,8 @@ module csr_regfile import ariane_pkg::*; #(
                 riscv::CSR_PMPADDR13:        csr_rdata = {10'b0, pmpaddr_q[13][riscv::PLEN-3:1], (pmpcfg_q[13].addr_mode[1] == 1'b1 ? 1'b1 : 1'b0)};
                 riscv::CSR_PMPADDR14:        csr_rdata = {10'b0, pmpaddr_q[14][riscv::PLEN-3:1], (pmpcfg_q[14].addr_mode[1] == 1'b1 ? 1'b1 : 1'b0)};
                 riscv::CSR_PMPADDR15:        csr_rdata = {10'b0, pmpaddr_q[15][riscv::PLEN-3:1], (pmpcfg_q[15].addr_mode[1] == 1'b1 ? 1'b1 : 1'b0)};
+                riscv::CSR_RAS_TOSP:         csr_rdata = '0;
+                riscv::CSR_RAS_CTRL:;
                 default: read_access_exception = 1'b1;
             endcase
         end
@@ -352,6 +355,7 @@ module csr_regfile import ariane_pkg::*; #(
         priv_lvl_d              = priv_lvl_q;
         debug_mode_d            = debug_mode_q;
         ras_enable_d            = ras_enable_q;
+        ras_flush_o             = 1'b0;
         dcsr_d                  = dcsr_q;
         dpc_d                   = dpc_q;
         dscratch0_d             = dscratch0_q;
@@ -645,7 +649,13 @@ module csr_regfile import ariane_pkg::*; #(
                 riscv::CSR_PMPADDR13:  if (!pmpcfg_q[13].locked && !(pmpcfg_q[14].locked && pmpcfg_q[14].addr_mode == riscv::TOR))  pmpaddr_d[13]  = csr_wdata[riscv::PLEN-3:0];
                 riscv::CSR_PMPADDR14:  if (!pmpcfg_q[14].locked && !(pmpcfg_q[15].locked && pmpcfg_q[15].addr_mode == riscv::TOR))  pmpaddr_d[14]  = csr_wdata[riscv::PLEN-3:0];
                 riscv::CSR_PMPADDR15:  if (!pmpcfg_q[15].locked)  pmpaddr_d[15]  = csr_wdata[riscv::PLEN-3:0];
-                riscv::CSR_ENABLE_RAS: ras_enable_d = 1'b1;
+                riscv::CSR_RAS_TOSP:;
+                riscv::CSR_RAS_CTRL: begin
+                    ras_enable_d = csr_wdata[0];
+                    ras_flush_o = 1'b1;
+                    // this instruction has side-effects
+                    flush_o = 1'b1;
+                end
                 default: update_access_exception = 1'b1;
             endcase
         end

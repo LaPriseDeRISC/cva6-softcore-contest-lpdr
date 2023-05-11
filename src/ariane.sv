@@ -186,6 +186,7 @@ module ariane import ariane_pkg::*; #(
   logic                     icache_en_csr;
   logic                     debug_mode;
   logic                     ras_enable;
+  logic                     ras_flush;
   logic                     single_step_csr_commit;
   riscv::pmpcfg_t [15:0]    pmpcfg;
   logic [15:0][53:0]        pmpaddr;
@@ -260,6 +261,7 @@ module ariane import ariane_pkg::*; #(
                            (commit_ack[1] &&
                           (commit_instr_id_commit[1].bp.cf.is_return ||
                            commit_instr_id_commit[1].bp.cf.is_call))),
+    .ras_flush_i         ( ras_flush                     ),
     .set_pc_commit_i     ( set_pc_ctrl_pcgen             ),
     .set_debug_pc_i      ( set_debug_pc                  ),
     .epc_i               ( epc_commit_pcgen              ),
@@ -545,6 +547,7 @@ module ariane import ariane_pkg::*; #(
     .debug_mode_o           ( debug_mode                    ),
     .single_step_o          ( single_step_csr_commit        ),
     .ras_enable_o           ( ras_enable                    ),
+    .ras_flush_o            ( ras_flush                     ),
     .dcache_en_o            ( dcache_en_csr_nbdcache        ),
     .icache_en_o            ( icache_en_csr                 ),
     .perf_addr_o            ( addr_csr_perf                 ),

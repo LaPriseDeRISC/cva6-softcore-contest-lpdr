@@ -33,6 +33,7 @@ module frontend import ariane_pkg::*; #(
   input  logic               set_pc_commit_i,    // Take the PC from commit stage
   input  logic [riscv::VLEN-1:0] pc_commit_i,        // PC of instruction in commit stage
   input  logic               commit_ras_i,     // valid signal from commit
+  input  logic               ras_flush_i,
   // CSR input
   input  logic [riscv::VLEN-1:0] epc_i,              // exception PC which we need to return to
   input  logic               eret_i,             // return from exception
@@ -363,7 +364,8 @@ module frontend import ariane_pkg::*; #(
     ) i_ras (
       .clk(clk_i),
       .rst_ni(rst_ni),
-      .rst_i(resolved_branch_i.valid && resolved_branch_i.cf_type.is_return && resolved_branch_i.is_mispredict),
+      .rst_i((resolved_branch_i.valid && resolved_branch_i.cf_type.is_return && resolved_branch_i.is_mispredict) ||
+              ras_flush_i),
       .pop(ras_pop && !flush_i),
       .push(ras_push && !flush_i),
       .commit({commit_ras_i, ras_in_ex}),
