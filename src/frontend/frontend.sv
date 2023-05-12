@@ -192,11 +192,11 @@ module frontend import ariane_pkg::*; #(
             // make sure to only alter the RAS if we actually consumed the instruction
             ras_pop = ras_predict.valid & instr_queue_consumed[i];
             predict_address = ras_predict.ra;
-            if(ras_predict.valid)
+            if(ras_predict.valid) begin
                 cf_type[i].is_return = 1'b1;
-            else
+                cf_type[i].taken = 1'b1;
+            end else
                 ras_invalid[i] = 1'b1;
-            cf_type[i].taken = 1'b1;
           end
           // branch prediction
           4'b1000: begin
