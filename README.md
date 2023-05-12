@@ -84,23 +84,15 @@ by La Prise de RISC
 
 ```
 cd zephyr-docker
-make fattach
+make build
 ```	
 You can do `make help` to see all the available commands.
 
-#### Building Developer Docker Image manually
+#### Reconnecting to Docker Image:
 
-The developer docker image can be built using the following command from the zephyr-docker folder:
-
+Once it is built
 ```
-cd zephyr-docker
-docker build -f Dockerfile --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t zephyr-build:v1 .
-```
-
-It can be used for building Zephyr samples and tests by mounting the Zephyr workspace into it:
-
-```
-docker run -ti --privileged -v `realpath workspace`:/workdir zephyr-build:v1
+make fattach
 ```
 
 All the following commands should be run from the docker.
@@ -132,18 +124,8 @@ Options:
    --picolibc-setup -p  Setup the picolibc directory
    --picolibc-all -pa   Build and patch picolibc
 ```
-dqsdqsd
+
 #### Initialization of Zephyr manually
-
-To initialize Zephyr environment with the Thales modified Zephyr:
-
-```
-cd /workdir
-west init -m https://github.com/ThalesGroup/riscv-zephyr --mr main
-west update
-```
-
-Thales modifications add CV32A6 support on Zybo board.
 
 #### Building a sample application
 
@@ -166,8 +148,16 @@ By default its value is 1 but you should try to protect against as many scenario
 
 Now that we have a working environment, we can build the RIPE attack.
 
+If you want to use only hardware protection
 ```
 west build -p -b cv32a6_zybo /workdir/ripe
+```
+
+If you want to use software protection the command differs
+
+```
+west build -p -b cv32a6_zybo /workdir/perf_baseline/ -DCONFIG_PICOLIBC_USE_MODULE:=y -DCONFIG_PICOLIBC:=y -DCMAKE_C_FLAGS:="-DLPDRMS_PROTECTION"
+
 ```
 
 #### Running the RIPE application on the CV32A6

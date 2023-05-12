@@ -1,0 +1,3 @@
+*** Booting Zephyr OS build zephyr-v3.2.0-331-g60296a2575f5  ***
+Begining of execution with depth 12, call number 50, seed value *float*
+SUCCESS: computed value *float* - duration: *float* sec 619379728 cycles
