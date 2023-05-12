@@ -135,7 +135,7 @@ package ariane_pkg;
     localparam BITS_SATURATION_COUNTER = 2;
     localparam NR_COMMIT_PORTS = 2;
 
-    localparam ENABLE_RENAME = 1'b0;
+    localparam ENABLE_RENAME = 1'b1;
 
     localparam ISSUE_WIDTH = 1;
     // amount of pipeline registers inserted for load/store return path
@@ -292,12 +292,10 @@ package ariane_pkg;
          logic        valid;
     } exception_t;
 
-    typedef enum logic [2:0] {
-      NoCF,   // No control flow prediction
-      Branch, // Branch
-      Jump,   // Jump to address from immediate
-      JumpR,  // Jump to address from registers
-      Return  // Return Address Prediction
+    typedef struct packed {
+      logic taken;
+      logic is_call;
+      logic is_return;
     } cf_t;
 
     // branch-predict
@@ -309,7 +307,8 @@ package ariane_pkg;
         logic [riscv::VLEN-1:0] pc;              // PC of predict or mis-predict
         logic [riscv::VLEN-1:0] target_address;  // target address at which to jump, or not
         logic                   is_mispredict;   // set if this was a mis-predict
-        logic                   is_taken;        // branch is taken
+        logic                   to_reg;          // branch addr comes from a register
+        logic                   conditional;     // branch is conditional
         cf_t                    cf_type;         // Type of control flow change
     } bp_resolve_t;
 

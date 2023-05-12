@@ -75,6 +75,8 @@ module csr_regfile import ariane_pkg::*; #(
     output logic                  tsr_o,                      // trap sret
     output logic                  debug_mode_o,               // we are in debug mode -> that will change some decoding
     output logic                  single_step_o,              // we are in single-step mode
+    output logic                  ras_enable_o,               // enable RAS protection
+    output logic                  ras_flush_o,
     // Caches
     output logic                  icache_en_o,                // L1 ICache Enable
     output logic                  dcache_en_o,                // L1 DCache Enable
@@ -135,6 +137,7 @@ module csr_regfile import ariane_pkg::*; #(
     riscv::xlen_t icache_q,    icache_d;
 
     logic        wfi_d,       wfi_q;
+    logic         ras_enable_d, ras_enable_q;
 
     riscv::xlen_t cycle_q,     cycle_d;
     riscv::xlen_t instret_q,   instret_d;
@@ -157,6 +160,7 @@ module csr_regfile import ariane_pkg::*; #(
     // ----------------
     assign mstatus_extended = riscv::IS_XLEN64 ? mstatus_q[riscv::XLEN-1:0] :
                               {mstatus_q.sd, mstatus_q.wpri3[7:0], mstatus_q[22:0]};
+    assign ras_enable_o = ras_enable_q;
 
     always_comb begin : csr_read_process
         // a read access exception can only occur if we attempt to read a CSR which does not exist
@@ -303,6 +307,8 @@ module csr_regfile import ariane_pkg::*; #(
                 riscv::CSR_PMPADDR13:        csr_rdata = {10'b0, pmpaddr_q[13][riscv::PLEN-3:1], (pmpcfg_q[13].addr_mode[1] == 1'b1 ? 1'b1 : 1'b0)};
                 riscv::CSR_PMPADDR14:        csr_rdata = {10'b0, pmpaddr_q[14][riscv::PLEN-3:1], (pmpcfg_q[14].addr_mode[1] == 1'b1 ? 1'b1 : 1'b0)};
                 riscv::CSR_PMPADDR15:        csr_rdata = {10'b0, pmpaddr_q[15][riscv::PLEN-3:1], (pmpcfg_q[15].addr_mode[1] == 1'b1 ? 1'b1 : 1'b0)};
+                riscv::CSR_RAS_TOSP:         csr_rdata = '0;
+                riscv::CSR_RAS_CTRL:;
                 default: read_access_exception = 1'b1;
             endcase
         end
@@ -348,6 +354,8 @@ module csr_regfile import ariane_pkg::*; #(
 
         priv_lvl_d              = priv_lvl_q;
         debug_mode_d            = debug_mode_q;
+        ras_enable_d            = ras_enable_q;
+        ras_flush_o             = 1'b0;
         dcsr_d                  = dcsr_q;
         dpc_d                   = dpc_q;
         dscratch0_d             = dscratch0_q;
@@ -641,7 +649,13 @@ module csr_regfile import ariane_pkg::*; #(
                 riscv::CSR_PMPADDR13:  if (!pmpcfg_q[13].locked && !(pmpcfg_q[14].locked && pmpcfg_q[14].addr_mode == riscv::TOR))  pmpaddr_d[13]  = csr_wdata[riscv::PLEN-3:0];
                 riscv::CSR_PMPADDR14:  if (!pmpcfg_q[14].locked && !(pmpcfg_q[15].locked && pmpcfg_q[15].addr_mode == riscv::TOR))  pmpaddr_d[14]  = csr_wdata[riscv::PLEN-3:0];
                 riscv::CSR_PMPADDR15:  if (!pmpcfg_q[15].locked)  pmpaddr_d[15]  = csr_wdata[riscv::PLEN-3:0];
-
+                riscv::CSR_RAS_TOSP:;
+                riscv::CSR_RAS_CTRL: begin
+                    ras_enable_d = csr_wdata[0];
+                    ras_flush_o = 1'b1;
+                    // this instruction has side-effects
+                    flush_o = 1'b1;
+                end
                 default: update_access_exception = 1'b1;
             endcase
         end
@@ -1122,6 +1136,8 @@ module csr_regfile import ariane_pkg::*; #(
             instret_q              <= {riscv::XLEN{1'b0}};
             // aux registers
             en_ld_st_translation_q <= 1'b0;
+            // ras protection
+            ras_enable_q           <= 1'b0;
             // wait for interrupt
             wfi_q                  <= 1'b0;
             // pmp
@@ -1165,6 +1181,8 @@ module csr_regfile import ariane_pkg::*; #(
             instret_q              <= instret_d;
             // aux registers
             en_ld_st_translation_q <= en_ld_st_translation_d;
+            // ras protection
+            ras_enable_q           <= ras_enable_d;
             // wait for interrupt
             wfi_q                  <= wfi_d;
             // pmp

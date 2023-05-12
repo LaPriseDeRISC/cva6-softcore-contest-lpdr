@@ -58,3 +58,6 @@
 [submodule "sw/app/coremark"]
 	path = sw/app/coremark
 	url = https://github.com/eembc/coremark
+[submodule "src/frontend/ras"]
+	path = src/frontend/ras
+	url = git@github.com:LaPriseDeRISC/test_ras.git

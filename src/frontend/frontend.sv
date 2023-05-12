@@ -21,6 +21,7 @@ module frontend import ariane_pkg::*; #(
   input  logic               clk_i,              // Clock
   input  logic               rst_ni,             // Asynchronous reset active low
   input  logic               flush_i,            // flush request for PCGEN
+  input  logic               flush_ras_i,        // flush request to ensure RAS coherency
   input  logic               flush_bp_i,         // flush branch prediction
   input  logic               debug_mode_i,
   // global input
@@ -31,6 +32,8 @@ module frontend import ariane_pkg::*; #(
   // from commit, when flushing the whole pipeline
   input  logic               set_pc_commit_i,    // Take the PC from commit stage
   input  logic [riscv::VLEN-1:0] pc_commit_i,        // PC of instruction in commit stage
+  input  logic               commit_ras_i,     // valid signal from commit
+  input  logic               ras_flush_i,
   // CSR input
   input  logic [riscv::VLEN-1:0] epc_i,              // exception PC which we need to return to
   input  logic               eret_i,             // return from exception
@@ -100,6 +103,7 @@ module frontend import ariane_pkg::*; #(
     // Instruction FIFO
     logic [riscv::VLEN-1:0]                 predict_address;
     cf_t  [ariane_pkg::INSTR_PER_FETCH-1:0] cf_type;
+    logic [ariane_pkg::INSTR_PER_FETCH-1:0] ras_invalid;
     logic [ariane_pkg::INSTR_PER_FETCH-1:0] taken_rvi_cf;
     logic [ariane_pkg::INSTR_PER_FETCH-1:0] taken_rvc_cf;
 
@@ -151,7 +155,7 @@ module frontend import ariane_pkg::*; #(
       // unconditional jumps with known target -> immediately resolved
       assign is_jump[i] = instruction_valid[i] & (rvi_jump[i] | rvc_jump[i]);
       // unconditional jumps with unknown target -> BTB
-      assign is_jalr[i] = instruction_valid[i] & ~is_return[i] & ~is_call[i] & (rvi_jalr[i] | rvc_jalr[i] | rvc_jr[i]);
+      assign is_jalr[i] = instruction_valid[i] & ~is_return[i] & (rvi_jalr[i] | rvc_jalr[i] | rvc_jr[i]);
     end
 
     // taken/not taken
@@ -159,8 +163,8 @@ module frontend import ariane_pkg::*; #(
       taken_rvi_cf = '0;
       taken_rvc_cf = '0;
       predict_address = '0;
-
-      for (int i = 0; i < INSTR_PER_FETCH; i++)  cf_type[i] = ariane_pkg::NoCF;
+      ras_invalid = 1'b0;
+      cf_type = '0;
 
       ras_push = 1'b0;
       ras_pop = 1'b0;
@@ -172,33 +176,30 @@ module frontend import ariane_pkg::*; #(
           4'b0000:; // regular instruction e.g.: no branch
           // unconditional jump to register, we need the BTB to resolve this
           4'b0001: begin
-            ras_pop = 1'b0;
-            ras_push = 1'b0;
             if (btb_prediction_shifted[i].valid) begin
               predict_address = btb_prediction_shifted[i].target_address;
-              cf_type[i] = ariane_pkg::JumpR;
+              cf_type[i].taken = 1'b1;
             end
           end
           // its an unconditional jump to an immediate
           4'b0010: begin
-            ras_pop = 1'b0;
-            ras_push = 1'b0;
             taken_rvi_cf[i] = rvi_jump[i];
             taken_rvc_cf[i] = rvc_jump[i];
-            cf_type[i] = ariane_pkg::Jump;
+            cf_type[i].taken = 1'b1;
           end
           // return
           4'b0100: begin
             // make sure to only alter the RAS if we actually consumed the instruction
             ras_pop = ras_predict.valid & instr_queue_consumed[i];
-            ras_push = 1'b0;
             predict_address = ras_predict.ra;
-            cf_type[i] = ariane_pkg::Return;
+            if(ras_predict.valid) begin
+                cf_type[i].is_return = 1'b1;
+                cf_type[i].taken = 1'b1;
+            end else
+                ras_invalid[i] = 1'b1;
           end
           // branch prediction
           4'b1000: begin
-            ras_pop = 1'b0;
-            ras_push = 1'b0;
             // if we have a valid dynamic prediction use it
             if (bht_prediction_shifted[i].valid) begin
               taken_rvi_cf[i] = rvi_branch[i] & bht_prediction_shifted[i].taken;
@@ -209,7 +210,7 @@ module frontend import ariane_pkg::*; #(
               taken_rvi_cf[i] = rvi_branch[i] & rvi_imm[i][riscv::VLEN-1];
               taken_rvc_cf[i] = rvc_branch[i] & rvc_imm[i][riscv::VLEN-1];
             end
-            if (taken_rvi_cf[i] || taken_rvc_cf[i]) cf_type[i] = ariane_pkg::Branch;
+            if (taken_rvi_cf[i] || taken_rvc_cf[i]) cf_type[i].taken = 1'b1;
           end
           default:;
             // default: $error("Decoded more than one control flow");
@@ -217,6 +218,7 @@ module frontend import ariane_pkg::*; #(
           // if this instruction, in addition, is a call, save the resulting address
           // but only if we actually consumed the address
           if (is_call[i]) begin
+            cf_type[i].is_call = 1'b1;
             ras_push = instr_queue_consumed[i];
             ras_update = addr[i] + (rvc_call[i] ? 2 : 4);
           end
@@ -232,7 +234,7 @@ module frontend import ariane_pkg::*; #(
       // BP cannot be valid if we have a return instruction and the RAS is not giving a valid address
       // Check that we encountered a control flow and that for a return the RAS 
       // contains a valid prediction.
-      for (int i = 0; i < INSTR_PER_FETCH; i++) bp_valid |= ((cf_type[i] != NoCF & cf_type[i] != Return) | ((cf_type[i] == Return) & ras_predict.valid));
+      for (int i = 0; i < INSTR_PER_FETCH; i++) bp_valid |= cf_type[i].taken && (!ras_invalid[i]);
     end
     assign is_mispredict = resolved_branch_i.valid & resolved_branch_i.is_mispredict;
 
@@ -252,14 +254,11 @@ module frontend import ariane_pkg::*; #(
     bht_update_t bht_update;
     btb_update_t btb_update;
 
-    assign bht_update.valid = resolved_branch_i.valid
-                                & (resolved_branch_i.cf_type == ariane_pkg::Branch);
+    assign bht_update.valid = resolved_branch_i.valid & resolved_branch_i.conditional;
     assign bht_update.pc    = resolved_branch_i.pc;
-    assign bht_update.taken = resolved_branch_i.is_taken;
+    assign bht_update.taken = resolved_branch_i.cf_type.taken;
     // only update mispredicted branches e.g. no returns from the RAS
-    assign btb_update.valid = resolved_branch_i.valid
-                                & resolved_branch_i.is_mispredict
-                                & (resolved_branch_i.cf_type == ariane_pkg::JumpR);
+    assign btb_update.valid = is_mispredict && resolved_branch_i.to_reg && !resolved_branch_i.cf_type.is_return;
     assign btb_update.pc    = resolved_branch_i.pc;
     assign btb_update.target_address = resolved_branch_i.target_address;
 
@@ -354,16 +353,26 @@ module frontend import ariane_pkg::*; #(
       end
     end
 
+    assert property (@(posedge clk_i) !(is_mispredict && resolved_branch_i.cf_type.is_return));
+    wire ras_in_ex = resolved_branch_i.valid && (resolved_branch_i.cf_type.is_return || resolved_branch_i.cf_type.is_call);
+    assign ras_predict.ra[0] = 1'b0; // JALR is always 2 bytes aligned according to the spec
     ras #(
-      .DEPTH  ( ArianeCfg.RASDepth  )
+        .STAGES(2),
+        .WIDTH(riscv::XLEN-1),
+        .DEPTH(1024),
+        .SCRATCHPAD_DEPTH(16)
     ) i_ras (
-      .clk_i,
-      .rst_ni,
-      .flush_i( flush_bp_i  ),
-      .push_i ( ras_push    ),
-      .pop_i  ( ras_pop     ),
-      .data_i ( ras_update  ),
-      .data_o ( ras_predict )
+      .clk(clk_i),
+      .rst_ni(rst_ni),
+      .rst_i((resolved_branch_i.valid && resolved_branch_i.cf_type.is_return && resolved_branch_i.is_mispredict) ||
+              ras_flush_i),
+      .pop(ras_pop && !flush_i),
+      .push(ras_push && !flush_i),
+      .commit({commit_ras_i, ras_in_ex}),
+      .flush({flush_ras_i, flush_i}),
+      .din(ras_update[riscv::XLEN-1:1]),
+      .dout(ras_predict.ra[riscv::XLEN-1:1]),
+      .valid(ras_predict.valid)
     );
 
     btb #(

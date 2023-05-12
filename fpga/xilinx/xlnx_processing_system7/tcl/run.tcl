@@ -2,7 +2,7 @@ set partNumber $::env(XILINX_PART)
 set boardName  $::env(XILINX_BOARD)
 
 set ipName xlnx_processing_system7
-
+set_param board.repoPaths [list $env(HOME)/.Xilinx/Vivado/2022.2/xhub/board_store/xilinx_board_store /tools/Xilinx/Vivado/2022.2/data/xhub/boards]
 create_project $ipName . -force -part $partNumber
 set_property board_part $boardName [current_project]
 

@@ -185,6 +185,8 @@ module ariane import ariane_pkg::*; #(
   logic                     csr_write_fflags_commit_cs;
   logic                     icache_en_csr;
   logic                     debug_mode;
+  logic                     ras_enable;
+  logic                     ras_flush;
   logic                     single_step_csr_commit;
   riscv::pmpcfg_t [15:0]    pmpcfg;
   logic [15:0][53:0]        pmpaddr;
@@ -245,6 +247,7 @@ module ariane import ariane_pkg::*; #(
     .ArianeCfg ( ArianeCfg )
   ) i_frontend (
     .flush_i             ( flush_ctrl_if                 ), // not entirely correct
+    .flush_ras_i         ( flush_ctrl_id || flush_ctrl_ex),
     .flush_bp_i          ( 1'b0                          ),
     .debug_mode_i        ( debug_mode                    ),
     .boot_addr_i         ( boot_addr_i[riscv::XLEN-1:0]  ),
@@ -252,6 +255,13 @@ module ariane import ariane_pkg::*; #(
     .icache_dreq_o       ( icache_dreq_if_cache          ),
     .resolved_branch_i   ( resolved_branch               ),
     .pc_commit_i         ( pc_commit                     ),
+    .commit_ras_i        ( (commit_ack[0] &&
+                          (commit_instr_id_commit[0].bp.cf.is_return ||
+                           commit_instr_id_commit[0].bp.cf.is_call)) ||
+                           (commit_ack[1] &&
+                          (commit_instr_id_commit[1].bp.cf.is_return ||
+                           commit_instr_id_commit[1].bp.cf.is_call))),
+    .ras_flush_i         ( ras_flush                     ),
     .set_pc_commit_i     ( set_pc_ctrl_pcgen             ),
     .set_debug_pc_i      ( set_debug_pc                  ),
     .epc_i               ( epc_commit_pcgen              ),
@@ -369,6 +379,7 @@ module ariane import ariane_pkg::*; #(
     .fu_data_i              ( fu_data_id_ex               ),
     .pc_i                   ( pc_id_ex                    ),
     .is_compressed_instr_i  ( is_compressed_instr_id_ex   ),
+    .ras_enable_i           ( ras_enable                  ),
     // fixed latency units
     .flu_result_o           ( flu_result_ex_id            ),
     .flu_trans_id_o         ( flu_trans_id_ex_id          ),
@@ -535,6 +546,8 @@ module ariane import ariane_pkg::*; #(
     .tsr_o                  ( tsr_csr_id                    ),
     .debug_mode_o           ( debug_mode                    ),
     .single_step_o          ( single_step_csr_commit        ),
+    .ras_enable_o           ( ras_enable                    ),
+    .ras_flush_o            ( ras_flush                     ),
     .dcache_en_o            ( dcache_en_csr_nbdcache        ),
     .icache_en_o            ( icache_en_csr                 ),
     .perf_addr_o            ( addr_csr_perf                 ),
